@@ -1,1 +1,1430 @@
-{"metadata":{"kernelspec":{"language":"python","display_name":"Python 3","name":"python3"},"language_info":{"name":"python","version":"3.11.11","mimetype":"text/x-python","codemirror_mode":{"name":"ipython","version":3},"pygments_lexer":"ipython3","nbconvert_exporter":"python","file_extension":".py"},"kaggle":{"accelerator":"none","dataSources":[{"sourceId":1733506,"sourceType":"datasetVersion","datasetId":6012}],"dockerImageVersionId":31012,"isInternetEnabled":true,"language":"python","sourceType":"notebook","isGpuEnabled":false}},"nbformat_minor":4,"nbformat":4,"cells":[{"cell_type":"code","source":"# This Python 3 environment comes with many helpful analytics libraries installed\n# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python\n# For example, here's several helpful packages to load\n\nimport numpy as np # linear algebra\nimport pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\nimport matplotlib as plt\nimport seaborn as sns\nfrom sklearn.pipeline import Pipeline\nfrom sklearn.preprocessing import StandardScaler, OneHotEncoder\n\n# Input data files are available in the read-only \"../input/\" directory\n# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory\n\nimport os\nfor dirname, _, filenames in os.walk('/kaggle/input'):\n    for filename in filenames:\n        print(os.path.join(dirname, filename))\n\n# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using \"Save & Run All\" \n# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session","metadata":{"_uuid":"8f2839f25d086af736a60e9eeb907d3b93b6e0e5","_cell_guid":"b1076dfc-b9ad-4769-8c92-a6c4dae69d19","trusted":true,"execution":{"iopub.status.busy":"2025-05-10T12:36:26.107833Z","iopub.execute_input":"2025-05-10T12:36:26.108150Z","iopub.status.idle":"2025-05-10T12:36:27.696629Z","shell.execute_reply.started":"2025-05-10T12:36:26.108127Z","shell.execute_reply":"2025-05-10T12:36:27.695820Z"}},"outputs":[{"name":"stdout","text":"/kaggle/input/weather-dataset-rattle-package/weatherAUS.csv\n","output_type":"stream"}],"execution_count":2},{"cell_type":"markdown","source":"Data Loading","metadata":{}},{"cell_type":"code","source":"df=pd.read_csv(\"/kaggle/input/weather-dataset-rattle-package/weatherAUS.csv\")\ndf.info()","metadata":{"trusted":true,"execution":{"iopub.status.busy":"2025-05-10T12:36:27.697897Z","iopub.execute_input":"2025-05-10T12:36:27.698406Z","iopub.status.idle":"2025-05-10T12:36:28.529661Z","shell.execute_reply.started":"2025-05-10T12:36:27.698379Z","shell.execute_reply":"2025-05-10T12:36:28.528413Z"}},"outputs":[{"name":"stdout","text":"<class 'pandas.core.frame.DataFrame'>\nRangeIndex: 145460 entries, 0 to 145459\nData columns (total 23 columns):\n #   Column         Non-Null Count   Dtype  \n---  ------         --------------   -----  \n 0   Date           145460 non-null  object \n 1   Location       145460 non-null  object \n 2   MinTemp        143975 non-null  float64\n 3   MaxTemp        144199 non-null  float64\n 4   Rainfall       142199 non-null  float64\n 5   Evaporation    82670 non-null   float64\n 6   Sunshine       75625 non-null   float64\n 7   WindGustDir    135134 non-null  object \n 8   WindGustSpeed  135197 non-null  float64\n 9   WindDir9am     134894 non-null  object \n 10  WindDir3pm     141232 non-null  object \n 11  WindSpeed9am   143693 non-null  float64\n 12  WindSpeed3pm   142398 non-null  float64\n 13  Humidity9am    142806 non-null  float64\n 14  Humidity3pm    140953 non-null  float64\n 15  Pressure9am    130395 non-null  float64\n 16  Pressure3pm    130432 non-null  float64\n 17  Cloud9am       89572 non-null   float64\n 18  Cloud3pm       86102 non-null   float64\n 19  Temp9am        143693 non-null  float64\n 20  Temp3pm        141851 non-null  float64\n 21  RainToday      142199 non-null  object \n 22  RainTomorrow   142193 non-null  object \ndtypes: float64(16), object(7)\nmemory usage: 25.5+ MB\n","output_type":"stream"}],"execution_count":3}]}
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "cb01e225",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005571,
+     "end_time": "2025-05-10T13:54:59.081349",
+     "exception": false,
+     "start_time": "2025-05-10T13:54:59.075778",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Building a Rainfall Prediction Classifier\n",
+    "\n",
+    "The project is for learning purposes for IBM Generative AI Engineering in Coursera\n",
+    "\n",
+    "Objectives\n",
+    "\n",
+    "Exploring and performing on a real-world data set\n",
+    "Building a classifier pipeline and optimize it using grid search cross validation\n",
+    "Evaluating your model by interpreting various performance metrics and visualizations\n",
+    "Implementing a different classifier by updating your pipeline\n",
+    "Using an appropriate set of parameters to search over in each case"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "1168e8e4",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:54:59.092683Z",
+     "iopub.status.busy": "2025-05-10T13:54:59.092274Z",
+     "iopub.status.idle": "2025-05-10T13:55:03.158190Z",
+     "shell.execute_reply": "2025-05-10T13:55:03.157124Z"
+    },
+    "papermill": {
+     "duration": 4.073436,
+     "end_time": "2025-05-10T13:55:03.159776",
+     "exception": false,
+     "start_time": "2025-05-10T13:54:59.086340",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/input/weather-dataset-rattle-package/weatherAUS.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "# This Python 3 environment comes with many helpful analytics libraries installed\n",
+    "# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python\n",
+    "# For example, here's several helpful packages to load\n",
+    "\n",
+    "import numpy as np # linear algebra\n",
+    "import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\n",
+    "import matplotlib as plt\n",
+    "import seaborn as sns\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "from sklearn.preprocessing import StandardScaler, OneHotEncoder\n",
+    "\n",
+    "# Input data files are available in the read-only \"../input/\" directory\n",
+    "# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory\n",
+    "\n",
+    "import os\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))\n",
+    "\n",
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')\n",
+    "\n",
+    "# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using \"Save & Run All\" \n",
+    "# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "57d28eb8",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:03.170873Z",
+     "iopub.status.busy": "2025-05-10T13:55:03.170061Z",
+     "iopub.status.idle": "2025-05-10T13:55:03.797631Z",
+     "shell.execute_reply": "2025-05-10T13:55:03.796658Z"
+    },
+    "papermill": {
+     "duration": 0.634601,
+     "end_time": "2025-05-10T13:55:03.799207",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:03.164606",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Date</th>\n",
+       "      <th>Location</th>\n",
+       "      <th>MinTemp</th>\n",
+       "      <th>MaxTemp</th>\n",
+       "      <th>Rainfall</th>\n",
+       "      <th>Evaporation</th>\n",
+       "      <th>Sunshine</th>\n",
+       "      <th>WindGustDir</th>\n",
+       "      <th>WindGustSpeed</th>\n",
+       "      <th>WindDir9am</th>\n",
+       "      <th>...</th>\n",
+       "      <th>Humidity9am</th>\n",
+       "      <th>Humidity3pm</th>\n",
+       "      <th>Pressure9am</th>\n",
+       "      <th>Pressure3pm</th>\n",
+       "      <th>Cloud9am</th>\n",
+       "      <th>Cloud3pm</th>\n",
+       "      <th>Temp9am</th>\n",
+       "      <th>Temp3pm</th>\n",
+       "      <th>RainToday</th>\n",
+       "      <th>RainTomorrow</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>2008-12-01</td>\n",
+       "      <td>Albury</td>\n",
+       "      <td>13.4</td>\n",
+       "      <td>22.9</td>\n",
+       "      <td>0.6</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>W</td>\n",
+       "      <td>44.0</td>\n",
+       "      <td>W</td>\n",
+       "      <td>...</td>\n",
+       "      <td>71.0</td>\n",
+       "      <td>22.0</td>\n",
+       "      <td>1007.7</td>\n",
+       "      <td>1007.1</td>\n",
+       "      <td>8.0</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>16.9</td>\n",
+       "      <td>21.8</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>2008-12-02</td>\n",
+       "      <td>Albury</td>\n",
+       "      <td>7.4</td>\n",
+       "      <td>25.1</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>WNW</td>\n",
+       "      <td>44.0</td>\n",
+       "      <td>NNW</td>\n",
+       "      <td>...</td>\n",
+       "      <td>44.0</td>\n",
+       "      <td>25.0</td>\n",
+       "      <td>1010.6</td>\n",
+       "      <td>1007.8</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>17.2</td>\n",
+       "      <td>24.3</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>2008-12-03</td>\n",
+       "      <td>Albury</td>\n",
+       "      <td>12.9</td>\n",
+       "      <td>25.7</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>WSW</td>\n",
+       "      <td>46.0</td>\n",
+       "      <td>W</td>\n",
+       "      <td>...</td>\n",
+       "      <td>38.0</td>\n",
+       "      <td>30.0</td>\n",
+       "      <td>1007.6</td>\n",
+       "      <td>1008.7</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>2.0</td>\n",
+       "      <td>21.0</td>\n",
+       "      <td>23.2</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>2008-12-04</td>\n",
+       "      <td>Albury</td>\n",
+       "      <td>9.2</td>\n",
+       "      <td>28.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NE</td>\n",
+       "      <td>24.0</td>\n",
+       "      <td>SE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>45.0</td>\n",
+       "      <td>16.0</td>\n",
+       "      <td>1017.6</td>\n",
+       "      <td>1012.8</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>18.1</td>\n",
+       "      <td>26.5</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>2008-12-05</td>\n",
+       "      <td>Albury</td>\n",
+       "      <td>17.5</td>\n",
+       "      <td>32.3</td>\n",
+       "      <td>1.0</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>W</td>\n",
+       "      <td>41.0</td>\n",
+       "      <td>ENE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>82.0</td>\n",
+       "      <td>33.0</td>\n",
+       "      <td>1010.8</td>\n",
+       "      <td>1006.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>8.0</td>\n",
+       "      <td>17.8</td>\n",
+       "      <td>29.7</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>5 rows × 23 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "         Date Location  MinTemp  MaxTemp  Rainfall  Evaporation  Sunshine  \\\n",
+       "0  2008-12-01   Albury     13.4     22.9       0.6          NaN       NaN   \n",
+       "1  2008-12-02   Albury      7.4     25.1       0.0          NaN       NaN   \n",
+       "2  2008-12-03   Albury     12.9     25.7       0.0          NaN       NaN   \n",
+       "3  2008-12-04   Albury      9.2     28.0       0.0          NaN       NaN   \n",
+       "4  2008-12-05   Albury     17.5     32.3       1.0          NaN       NaN   \n",
+       "\n",
+       "  WindGustDir  WindGustSpeed WindDir9am  ... Humidity9am  Humidity3pm  \\\n",
+       "0           W           44.0          W  ...        71.0         22.0   \n",
+       "1         WNW           44.0        NNW  ...        44.0         25.0   \n",
+       "2         WSW           46.0          W  ...        38.0         30.0   \n",
+       "3          NE           24.0         SE  ...        45.0         16.0   \n",
+       "4           W           41.0        ENE  ...        82.0         33.0   \n",
+       "\n",
+       "   Pressure9am  Pressure3pm  Cloud9am  Cloud3pm  Temp9am  Temp3pm  RainToday  \\\n",
+       "0       1007.7       1007.1       8.0       NaN     16.9     21.8         No   \n",
+       "1       1010.6       1007.8       NaN       NaN     17.2     24.3         No   \n",
+       "2       1007.6       1008.7       NaN       2.0     21.0     23.2         No   \n",
+       "3       1017.6       1012.8       NaN       NaN     18.1     26.5         No   \n",
+       "4       1010.8       1006.0       7.0       8.0     17.8     29.7         No   \n",
+       "\n",
+       "   RainTomorrow  \n",
+       "0            No  \n",
+       "1            No  \n",
+       "2            No  \n",
+       "3            No  \n",
+       "4            No  \n",
+       "\n",
+       "[5 rows x 23 columns]"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df=pd.read_csv(\"/kaggle/input/weather-dataset-rattle-package/weatherAUS.csv\")\n",
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "be5a72b4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:03.810309Z",
+     "iopub.status.busy": "2025-05-10T13:55:03.809934Z",
+     "iopub.status.idle": "2025-05-10T13:55:03.873751Z",
+     "shell.execute_reply": "2025-05-10T13:55:03.872894Z"
+    },
+    "papermill": {
+     "duration": 0.070926,
+     "end_time": "2025-05-10T13:55:03.875166",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:03.804240",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Date             145460\n",
+       "Location         145460\n",
+       "MinTemp          143975\n",
+       "MaxTemp          144199\n",
+       "Rainfall         142199\n",
+       "Evaporation       82670\n",
+       "Sunshine          75625\n",
+       "WindGustDir      135134\n",
+       "WindGustSpeed    135197\n",
+       "WindDir9am       134894\n",
+       "WindDir3pm       141232\n",
+       "WindSpeed9am     143693\n",
+       "WindSpeed3pm     142398\n",
+       "Humidity9am      142806\n",
+       "Humidity3pm      140953\n",
+       "Pressure9am      130395\n",
+       "Pressure3pm      130432\n",
+       "Cloud9am          89572\n",
+       "Cloud3pm          86102\n",
+       "Temp9am          143693\n",
+       "Temp3pm          141851\n",
+       "RainToday        142199\n",
+       "RainTomorrow     142193\n",
+       "dtype: int64"
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.count()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6c13513c",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004707,
+     "end_time": "2025-05-10T13:55:03.885070",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:03.880363",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Cleaning the data for simplification "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "20679257",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:03.896442Z",
+     "iopub.status.busy": "2025-05-10T13:55:03.895737Z",
+     "iopub.status.idle": "2025-05-10T13:55:03.997519Z",
+     "shell.execute_reply": "2025-05-10T13:55:03.996337Z"
+    },
+    "papermill": {
+     "duration": 0.109137,
+     "end_time": "2025-05-10T13:55:03.999197",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:03.890060",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "Index: 56420 entries, 6049 to 142302\n",
+      "Data columns (total 23 columns):\n",
+      " #   Column         Non-Null Count  Dtype  \n",
+      "---  ------         --------------  -----  \n",
+      " 0   Date           56420 non-null  object \n",
+      " 1   Location       56420 non-null  object \n",
+      " 2   MinTemp        56420 non-null  float64\n",
+      " 3   MaxTemp        56420 non-null  float64\n",
+      " 4   Rainfall       56420 non-null  float64\n",
+      " 5   Evaporation    56420 non-null  float64\n",
+      " 6   Sunshine       56420 non-null  float64\n",
+      " 7   WindGustDir    56420 non-null  object \n",
+      " 8   WindGustSpeed  56420 non-null  float64\n",
+      " 9   WindDir9am     56420 non-null  object \n",
+      " 10  WindDir3pm     56420 non-null  object \n",
+      " 11  WindSpeed9am   56420 non-null  float64\n",
+      " 12  WindSpeed3pm   56420 non-null  float64\n",
+      " 13  Humidity9am    56420 non-null  float64\n",
+      " 14  Humidity3pm    56420 non-null  float64\n",
+      " 15  Pressure9am    56420 non-null  float64\n",
+      " 16  Pressure3pm    56420 non-null  float64\n",
+      " 17  Cloud9am       56420 non-null  float64\n",
+      " 18  Cloud3pm       56420 non-null  float64\n",
+      " 19  Temp9am        56420 non-null  float64\n",
+      " 20  Temp3pm        56420 non-null  float64\n",
+      " 21  RainToday      56420 non-null  object \n",
+      " 22  RainTomorrow   56420 non-null  object \n",
+      "dtypes: float64(16), object(7)\n",
+      "memory usage: 10.3+ MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "df = df.dropna()\n",
+    "df.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "54b4d146",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.010514Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.010211Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.015911Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.015190Z"
+    },
+    "papermill": {
+     "duration": 0.013064,
+     "end_time": "2025-05-10T13:55:04.017414",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.004350",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Index(['Date', 'Location', 'MinTemp', 'MaxTemp', 'Rainfall', 'Evaporation',\n",
+       "       'Sunshine', 'WindGustDir', 'WindGustSpeed', 'WindDir9am', 'WindDir3pm',\n",
+       "       'WindSpeed9am', 'WindSpeed3pm', 'Humidity9am', 'Humidity3pm',\n",
+       "       'Pressure9am', 'Pressure3pm', 'Cloud9am', 'Cloud3pm', 'Temp9am',\n",
+       "       'Temp3pm', 'RainToday', 'RainTomorrow'],\n",
+       "      dtype='object')"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "54db5558",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.028787Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.028497Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.037133Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.036355Z"
+    },
+    "papermill": {
+     "duration": 0.01608,
+     "end_time": "2025-05-10T13:55:04.038664",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.022584",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "df = df.rename(columns={'RainToday': 'RainYesterday',\n",
+    "                        'RainTomorrow': 'RainToday'\n",
+    "                        })"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "042529c2",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004789,
+     "end_time": "2025-05-10T13:55:04.048710",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.043921",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Location Selection: Grouping the close locations"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "883fa9f7",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.059848Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.059534Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.079280Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.078245Z"
+    },
+    "papermill": {
+     "duration": 0.027356,
+     "end_time": "2025-05-10T13:55:04.081014",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.053658",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "Index: 7557 entries, 64191 to 80997\n",
+      "Data columns (total 23 columns):\n",
+      " #   Column         Non-Null Count  Dtype  \n",
+      "---  ------         --------------  -----  \n",
+      " 0   Date           7557 non-null   object \n",
+      " 1   Location       7557 non-null   object \n",
+      " 2   MinTemp        7557 non-null   float64\n",
+      " 3   MaxTemp        7557 non-null   float64\n",
+      " 4   Rainfall       7557 non-null   float64\n",
+      " 5   Evaporation    7557 non-null   float64\n",
+      " 6   Sunshine       7557 non-null   float64\n",
+      " 7   WindGustDir    7557 non-null   object \n",
+      " 8   WindGustSpeed  7557 non-null   float64\n",
+      " 9   WindDir9am     7557 non-null   object \n",
+      " 10  WindDir3pm     7557 non-null   object \n",
+      " 11  WindSpeed9am   7557 non-null   float64\n",
+      " 12  WindSpeed3pm   7557 non-null   float64\n",
+      " 13  Humidity9am    7557 non-null   float64\n",
+      " 14  Humidity3pm    7557 non-null   float64\n",
+      " 15  Pressure9am    7557 non-null   float64\n",
+      " 16  Pressure3pm    7557 non-null   float64\n",
+      " 17  Cloud9am       7557 non-null   float64\n",
+      " 18  Cloud3pm       7557 non-null   float64\n",
+      " 19  Temp9am        7557 non-null   float64\n",
+      " 20  Temp3pm        7557 non-null   float64\n",
+      " 21  RainYesterday  7557 non-null   object \n",
+      " 22  RainToday      7557 non-null   object \n",
+      "dtypes: float64(16), object(7)\n",
+      "memory usage: 1.4+ MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "df = df[df.Location.isin(['Melbourne','MelbourneAirport','Watsonia',])]\n",
+    "df. info()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d96d4d18",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005309,
+     "end_time": "2025-05-10T13:55:04.091759",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.086450",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "We still have 7557 records."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8d5b9f8a",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005189,
+     "end_time": "2025-05-10T13:55:04.102447",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.097258",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Grouping the Seasons and switching the date column with season"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "29419ec0",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.114612Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.113680Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.119983Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.118974Z"
+    },
+    "papermill": {
+     "duration": 0.013816,
+     "end_time": "2025-05-10T13:55:04.121474",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.107658",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def date_to_season(date):\n",
+    "    month = date.month\n",
+    "    if (month == 12) or (month == 1) or (month == 2):\n",
+    "        return 'Summer'\n",
+    "    elif (month == 3) or (month == 4) or (month == 5):\n",
+    "        return 'Autumn'\n",
+    "    elif (month == 6) or (month == 7) or (month == 8):\n",
+    "        return 'Winter'\n",
+    "    elif (month == 9) or (month == 10) or (month == 11):\n",
+    "        return 'Spring'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "a210656d",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.132973Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.132641Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.183242Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.182291Z"
+    },
+    "papermill": {
+     "duration": 0.058047,
+     "end_time": "2025-05-10T13:55:04.184743",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.126696",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Location</th>\n",
+       "      <th>MinTemp</th>\n",
+       "      <th>MaxTemp</th>\n",
+       "      <th>Rainfall</th>\n",
+       "      <th>Evaporation</th>\n",
+       "      <th>Sunshine</th>\n",
+       "      <th>WindGustDir</th>\n",
+       "      <th>WindGustSpeed</th>\n",
+       "      <th>WindDir9am</th>\n",
+       "      <th>WindDir3pm</th>\n",
+       "      <th>...</th>\n",
+       "      <th>Humidity3pm</th>\n",
+       "      <th>Pressure9am</th>\n",
+       "      <th>Pressure3pm</th>\n",
+       "      <th>Cloud9am</th>\n",
+       "      <th>Cloud3pm</th>\n",
+       "      <th>Temp9am</th>\n",
+       "      <th>Temp3pm</th>\n",
+       "      <th>RainYesterday</th>\n",
+       "      <th>RainToday</th>\n",
+       "      <th>Season</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>64191</th>\n",
+       "      <td>MelbourneAirport</td>\n",
+       "      <td>11.2</td>\n",
+       "      <td>19.9</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>5.6</td>\n",
+       "      <td>8.8</td>\n",
+       "      <td>SW</td>\n",
+       "      <td>69.0</td>\n",
+       "      <td>W</td>\n",
+       "      <td>SW</td>\n",
+       "      <td>...</td>\n",
+       "      <td>37.0</td>\n",
+       "      <td>1005.1</td>\n",
+       "      <td>1006.4</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>15.9</td>\n",
+       "      <td>18.1</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>Summer</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>64192</th>\n",
+       "      <td>MelbourneAirport</td>\n",
+       "      <td>7.8</td>\n",
+       "      <td>17.8</td>\n",
+       "      <td>1.2</td>\n",
+       "      <td>7.2</td>\n",
+       "      <td>12.9</td>\n",
+       "      <td>SSE</td>\n",
+       "      <td>56.0</td>\n",
+       "      <td>SW</td>\n",
+       "      <td>SSE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>43.0</td>\n",
+       "      <td>1018.0</td>\n",
+       "      <td>1019.3</td>\n",
+       "      <td>6.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>12.5</td>\n",
+       "      <td>15.8</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Summer</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>64193</th>\n",
+       "      <td>MelbourneAirport</td>\n",
+       "      <td>6.3</td>\n",
+       "      <td>21.1</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>6.2</td>\n",
+       "      <td>10.5</td>\n",
+       "      <td>SSE</td>\n",
+       "      <td>31.0</td>\n",
+       "      <td>E</td>\n",
+       "      <td>S</td>\n",
+       "      <td>...</td>\n",
+       "      <td>35.0</td>\n",
+       "      <td>1020.8</td>\n",
+       "      <td>1017.6</td>\n",
+       "      <td>1.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>13.4</td>\n",
+       "      <td>19.6</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Summer</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>64194</th>\n",
+       "      <td>MelbourneAirport</td>\n",
+       "      <td>8.1</td>\n",
+       "      <td>29.2</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>6.4</td>\n",
+       "      <td>12.5</td>\n",
+       "      <td>SSE</td>\n",
+       "      <td>35.0</td>\n",
+       "      <td>NE</td>\n",
+       "      <td>SSE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>23.0</td>\n",
+       "      <td>1016.2</td>\n",
+       "      <td>1012.8</td>\n",
+       "      <td>5.0</td>\n",
+       "      <td>4.0</td>\n",
+       "      <td>16.0</td>\n",
+       "      <td>28.2</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Summer</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>64195</th>\n",
+       "      <td>MelbourneAirport</td>\n",
+       "      <td>9.7</td>\n",
+       "      <td>29.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>7.4</td>\n",
+       "      <td>12.3</td>\n",
+       "      <td>SE</td>\n",
+       "      <td>33.0</td>\n",
+       "      <td>SW</td>\n",
+       "      <td>SSE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>31.0</td>\n",
+       "      <td>1011.9</td>\n",
+       "      <td>1010.3</td>\n",
+       "      <td>6.0</td>\n",
+       "      <td>2.0</td>\n",
+       "      <td>19.4</td>\n",
+       "      <td>27.1</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Summer</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>80992</th>\n",
+       "      <td>Watsonia</td>\n",
+       "      <td>3.6</td>\n",
+       "      <td>14.5</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2.4</td>\n",
+       "      <td>8.8</td>\n",
+       "      <td>NNE</td>\n",
+       "      <td>41.0</td>\n",
+       "      <td>ENE</td>\n",
+       "      <td>NNE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>66.0</td>\n",
+       "      <td>1028.4</td>\n",
+       "      <td>1025.0</td>\n",
+       "      <td>1.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>5.2</td>\n",
+       "      <td>13.8</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Winter</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>80994</th>\n",
+       "      <td>Watsonia</td>\n",
+       "      <td>4.8</td>\n",
+       "      <td>13.3</td>\n",
+       "      <td>0.4</td>\n",
+       "      <td>0.6</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>NNW</td>\n",
+       "      <td>24.0</td>\n",
+       "      <td>NE</td>\n",
+       "      <td>NNE</td>\n",
+       "      <td>...</td>\n",
+       "      <td>63.0</td>\n",
+       "      <td>1028.5</td>\n",
+       "      <td>1025.1</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>5.6</td>\n",
+       "      <td>12.4</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Winter</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>80995</th>\n",
+       "      <td>Watsonia</td>\n",
+       "      <td>5.6</td>\n",
+       "      <td>13.1</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>1.6</td>\n",
+       "      <td>6.0</td>\n",
+       "      <td>NNW</td>\n",
+       "      <td>52.0</td>\n",
+       "      <td>NE</td>\n",
+       "      <td>N</td>\n",
+       "      <td>...</td>\n",
+       "      <td>67.0</td>\n",
+       "      <td>1019.0</td>\n",
+       "      <td>1014.0</td>\n",
+       "      <td>1.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>8.8</td>\n",
+       "      <td>11.6</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>Winter</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>80996</th>\n",
+       "      <td>Watsonia</td>\n",
+       "      <td>6.9</td>\n",
+       "      <td>12.1</td>\n",
+       "      <td>3.2</td>\n",
+       "      <td>1.8</td>\n",
+       "      <td>5.6</td>\n",
+       "      <td>SSW</td>\n",
+       "      <td>24.0</td>\n",
+       "      <td>WNW</td>\n",
+       "      <td>SW</td>\n",
+       "      <td>...</td>\n",
+       "      <td>61.0</td>\n",
+       "      <td>1018.7</td>\n",
+       "      <td>1017.3</td>\n",
+       "      <td>2.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>7.9</td>\n",
+       "      <td>11.0</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Winter</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>80997</th>\n",
+       "      <td>Watsonia</td>\n",
+       "      <td>7.9</td>\n",
+       "      <td>13.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2.8</td>\n",
+       "      <td>3.8</td>\n",
+       "      <td>NNW</td>\n",
+       "      <td>39.0</td>\n",
+       "      <td>N</td>\n",
+       "      <td>N</td>\n",
+       "      <td>...</td>\n",
+       "      <td>69.0</td>\n",
+       "      <td>1017.6</td>\n",
+       "      <td>1015.3</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>7.0</td>\n",
+       "      <td>9.0</td>\n",
+       "      <td>11.7</td>\n",
+       "      <td>No</td>\n",
+       "      <td>No</td>\n",
+       "      <td>Winter</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>7557 rows × 23 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "               Location  MinTemp  MaxTemp  Rainfall  Evaporation  Sunshine  \\\n",
+       "64191  MelbourneAirport     11.2     19.9       0.0          5.6       8.8   \n",
+       "64192  MelbourneAirport      7.8     17.8       1.2          7.2      12.9   \n",
+       "64193  MelbourneAirport      6.3     21.1       0.0          6.2      10.5   \n",
+       "64194  MelbourneAirport      8.1     29.2       0.0          6.4      12.5   \n",
+       "64195  MelbourneAirport      9.7     29.0       0.0          7.4      12.3   \n",
+       "...                 ...      ...      ...       ...          ...       ...   \n",
+       "80992          Watsonia      3.6     14.5       0.0          2.4       8.8   \n",
+       "80994          Watsonia      4.8     13.3       0.4          0.6       0.0   \n",
+       "80995          Watsonia      5.6     13.1       0.0          1.6       6.0   \n",
+       "80996          Watsonia      6.9     12.1       3.2          1.8       5.6   \n",
+       "80997          Watsonia      7.9     13.0       0.0          2.8       3.8   \n",
+       "\n",
+       "      WindGustDir  WindGustSpeed WindDir9am WindDir3pm  ...  Humidity3pm  \\\n",
+       "64191          SW           69.0          W         SW  ...         37.0   \n",
+       "64192         SSE           56.0         SW        SSE  ...         43.0   \n",
+       "64193         SSE           31.0          E          S  ...         35.0   \n",
+       "64194         SSE           35.0         NE        SSE  ...         23.0   \n",
+       "64195          SE           33.0         SW        SSE  ...         31.0   \n",
+       "...           ...            ...        ...        ...  ...          ...   \n",
+       "80992         NNE           41.0        ENE        NNE  ...         66.0   \n",
+       "80994         NNW           24.0         NE        NNE  ...         63.0   \n",
+       "80995         NNW           52.0         NE          N  ...         67.0   \n",
+       "80996         SSW           24.0        WNW         SW  ...         61.0   \n",
+       "80997         NNW           39.0          N          N  ...         69.0   \n",
+       "\n",
+       "       Pressure9am  Pressure3pm  Cloud9am  Cloud3pm  Temp9am  Temp3pm  \\\n",
+       "64191       1005.1       1006.4       7.0       7.0     15.9     18.1   \n",
+       "64192       1018.0       1019.3       6.0       7.0     12.5     15.8   \n",
+       "64193       1020.8       1017.6       1.0       7.0     13.4     19.6   \n",
+       "64194       1016.2       1012.8       5.0       4.0     16.0     28.2   \n",
+       "64195       1011.9       1010.3       6.0       2.0     19.4     27.1   \n",
+       "...            ...          ...       ...       ...      ...      ...   \n",
+       "80992       1028.4       1025.0       1.0       7.0      5.2     13.8   \n",
+       "80994       1028.5       1025.1       7.0       7.0      5.6     12.4   \n",
+       "80995       1019.0       1014.0       1.0       7.0      8.8     11.6   \n",
+       "80996       1018.7       1017.3       2.0       7.0      7.9     11.0   \n",
+       "80997       1017.6       1015.3       7.0       7.0      9.0     11.7   \n",
+       "\n",
+       "       RainYesterday  RainToday  Season  \n",
+       "64191             No        Yes  Summer  \n",
+       "64192            Yes         No  Summer  \n",
+       "64193             No         No  Summer  \n",
+       "64194             No         No  Summer  \n",
+       "64195             No         No  Summer  \n",
+       "...              ...        ...     ...  \n",
+       "80992             No         No  Winter  \n",
+       "80994             No         No  Winter  \n",
+       "80995             No        Yes  Winter  \n",
+       "80996            Yes         No  Winter  \n",
+       "80997             No         No  Winter  \n",
+       "\n",
+       "[7557 rows x 23 columns]"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df['Date'] = pd.to_datetime(df['Date'])\n",
+    "df['Season'] = df['Date'].apply(date_to_season)\n",
+    "df = df.drop(columns='Date')\n",
+    "df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "6884c622",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.197525Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.197185Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.208644Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.207724Z"
+    },
+    "papermill": {
+     "duration": 0.019677,
+     "end_time": "2025-05-10T13:55:04.210233",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.190556",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Rainfall\n",
+       "0.0     4452\n",
+       "0.2      550\n",
+       "0.4      258\n",
+       "0.6      198\n",
+       "0.8      157\n",
+       "        ... \n",
+       "33.6       1\n",
+       "27.8       1\n",
+       "18.4       1\n",
+       "32.4       1\n",
+       "13.0       1\n",
+       "Name: count, Length: 172, dtype: int64"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Define feature and target dataframes\n",
+    "X = df.drop(columns='Rainfall', axis=1)\n",
+    "y = df['Rainfall']\n",
+    "\n",
+    "y.value_counts()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "769566a0",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005934,
+     "end_time": "2025-05-10T13:55:04.221936",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.216002",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "From the value counts, it shows that annual rainfall is relatively infrequent in the Melbourne area.\n",
+    "\n",
+    "Using the naive model to calculate the accuracy of assumption that it will not rain every day, accuracy will be 100%.\n",
+    "\n",
+    "This dataset shows an imbalance since the y.value_counts() show many more \"No Rain\" days than \"Rain\" days."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8b7c9055",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005532,
+     "end_time": "2025-05-10T13:55:04.233151",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.227619",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Split the data into training and test sests, ensuring target stratification"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "104f87d5",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.245607Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.245321Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.373657Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.372663Z"
+    },
+    "papermill": {
+     "duration": 0.136586,
+     "end_time": "2025-05-10T13:55:04.375300",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.238714",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split\n",
+    "\n",
+    "\n",
+    "valid_classes = y.value_counts()[y.value_counts() >= 2].index\n",
+    "X = X[y.isin(valid_classes)]\n",
+    "y = y[y.isin(valid_classes)]\n",
+    "\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    X, y, \n",
+    "    test_size=0.2, \n",
+    "    stratify=y, \n",
+    "    random_state=42\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "cde39de8",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005388,
+     "end_time": "2025-05-10T13:55:04.386504",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.381116",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Automatically detect numerical and categorical columns and assign them to separate numeric and categorical features¶"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "dde0174b",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.399298Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.398720Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.406008Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.405286Z"
+    },
+    "papermill": {
+     "duration": 0.015398,
+     "end_time": "2025-05-10T13:55:04.407453",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.392055",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "numeric_features = X_train.select_dtypes(include=['number']).columns.tolist()  \n",
+    "categorical_features = X_train.select_dtypes(include=['object', 'category']).columns.tolist()\n",
+    "\n",
+    "\n",
+    "numeric_transformer = Pipeline(steps=[('scaler', StandardScaler())])\n",
+    "\n",
+    "\n",
+    "categorical_transformer = Pipeline(steps=[('onehot', OneHotEncoder(handle_unknown='ignore'))])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "916ec2c4",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005378,
+     "end_time": "2025-05-10T13:55:04.418548",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.413170",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Combining the transformers into single preprocessing column transformer"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "f59d33b6",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.431699Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.431360Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.449645Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.448722Z"
+    },
+    "papermill": {
+     "duration": 0.026968,
+     "end_time": "2025-05-10T13:55:04.451476",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.424508",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.compose import ColumnTransformer\n",
+    "\n",
+    "preprocessor = ColumnTransformer(\n",
+    "    transformers=[\n",
+    "        ('num', numeric_transformer, numeric_features),\n",
+    "        ('cat', categorical_transformer, categorical_features)\n",
+    "    ]\n",
+    ")\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "13e638ea",
+   "metadata": {
+    "papermill": {
+     "duration": 0.005642,
+     "end_time": "2025-05-10T13:55:04.463315",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.457673",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Random Forest Classifier Pipeline Creation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "f33c1979",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.476866Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.476554Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.856855Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.855972Z"
+    },
+    "papermill": {
+     "duration": 0.389051,
+     "end_time": "2025-05-10T13:55:04.858482",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.469431",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "pipeline = Pipeline(steps=[\n",
+    "    ('preprocessor', preprocessor),\n",
+    "    ('classifier', RandomForestClassifier(random_state=42))\n",
+    "])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "3c653c73",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-10T13:55:04.871495Z",
+     "iopub.status.busy": "2025-05-10T13:55:04.871186Z",
+     "iopub.status.idle": "2025-05-10T13:55:04.875771Z",
+     "shell.execute_reply": "2025-05-10T13:55:04.874883Z"
+    },
+    "papermill": {
+     "duration": 0.012824,
+     "end_time": "2025-05-10T13:55:04.877142",
+     "exception": false,
+     "start_time": "2025-05-10T13:55:04.864318",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "param_grid = {\n",
+    "    'classifier__n_estimators': [50, 100],\n",
+    "    'classifier__max_depth': [None, 10, 20],\n",
+    "    'classifier__min_samples_split': [2, 5]\n",
+    "}"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 6012,
+     "sourceId": 1733506,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 31012,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.11"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 11.423822,
+   "end_time": "2025-05-10T13:55:05.501302",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-05-10T13:54:54.077480",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
